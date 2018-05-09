@@ -1,0 +1,109 @@
+---
+- name: parser meta data
+  parser_metadata:
+    version: 1.0
+    command: show bgp neighbor detail 
+    network_os: iosxr
+
+- name: match sections
+  pattern_match:
+    regex: "^BGP neighbor is (.*)"
+    match_all: yes
+    match_greedy: yes
+  register: section
+
+- name: match BGP neighbors
+  pattern_group:
+    - name: match BGP neighbor
+      pattern_match:
+        regex: "^BGP neighbor is (.*)"
+        content: "{{ item }}"
+      register: BGP_neighbor
+
+    - name: match remote AS
+      pattern_match:
+        regex: "^.*Remote AS (\\d+)"
+        content: "{{ item }}"
+      register: remote_as
+
+    - name: match Description
+      pattern_match:
+        regex: "^.*Description: (.*)"
+        content: "{{ item }}"
+      register: description 
+
+    - name: match bgp state
+      pattern_match:
+        regex: "^.*BGP.+state = (.*)"
+        content: "{{ item }}"
+      register: bgp_state
+
+    - name: match bgp uptime
+      pattern_match:
+        regex: "^.*BGP.+state = (.*), up for (.*)"
+        content: "{{ item }}"
+      register: uptime
+
+    - name: match accepted prefixes
+      pattern_match:
+        regex: "^.*(\\d+) accepted prefixes,"
+        content: "{{ item }}"
+      register: accepted_prefixes
+    
+    - name: match advertised prefix 
+      pattern_match:
+        regex: "^.*Prefix advertised (\\d+),"
+        content: "{{ item }}"
+      register: advertised_prefixes
+
+    - name: match incoming route policy 
+      pattern_match:
+        regex: "^.*Policy for incoming advertisements is (.*)"
+        content: "{{ item }}"
+      register: incoming_route_policy
+
+    - name: match incoming route policy 
+      pattern_match:
+        regex: "^.*Policy for outgoing advertisements is (.*)"
+        content: "{{ item }}"
+      register: outgoing_route_policy
+
+    - name: match router_id
+      pattern_match:
+        regex: "^.*Remote router ID (\\d+\\.\\d+\\.\\d+\\.\\d+)"
+        content: "{{ item }}"
+      register: router_id
+  loop: "{{ section }}"
+  register: bgp_neighbor
+
+- name: generate json data structure
+  json_template:
+    template:
+        - key: "{{ item.BGP_neighbor.matches.0 }}"
+          object:
+            - key: BGP_neighbor
+              value: "{{ item.BGP_neighbor.matches.0 }}"
+            - key: Remote_AS
+              value: "{{ item.remote_as.matches.0 }}"
+            - key: Description
+              value: "{{ item.description.matches.0 }}"
+            - key: BGP_State
+              value: "{{ item.bgp_state.matches.0 }}"
+            - key: Router_ID
+              value: "{{ item.router_id.matches.0 }}"
+            - key: up_time
+              value: "{{ item.uptime.matches.1 }}"
+            - key: accepted_prefixes
+              value: "{{ item.accepted_prefixes.matches.0 }}"
+            - key: advertised_prefixes
+              value: "{{ item.advertised_prefixes.matches.0 }}"
+        #- key: Policy
+        #object:
+            - key: incoming_route_policy
+              value: "{{ item.incoming_route_policy.matches.0 }}"
+            - key: outgoing_route_policy
+              value: "{{ item.outgoing_route_policy.matches.0 }}"
+
+  loop: "{{ bgp_neighbor }}"
+  export: yes
+  register: bgp_neighbors_facts

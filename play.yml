@@ -1,0 +1,24 @@
+---
+- hosts: lab
+  connection: network_cli
+  gather_facts: no
+
+  tasks:
+
+  - import_role:
+      name: ansible-network.network-engine
+
+  - name: show bgp neighbor detail
+    cli:
+      command: show bgp neighbor detail
+      parser: "parsers/bgp_neighbors.yml"
+
+  - name: show cdp neighbors det
+    cli: 
+      command: show cdp neighbors det
+      parser: "parsers/cdp_neighbors.yml"
+
+  
+  - name: Display matches (system_facts)
+    debug:
+      msg: '{{ hostvars[inventory_hostname]["ansible_facts"] }}'
